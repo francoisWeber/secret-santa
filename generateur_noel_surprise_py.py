@@ -1,26 +1,105 @@
 # coding: utf-8
+import time
+import tqdm
 import random
 import json
 import os
 import hashlib
+import vobject
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+# constants
+VCARD_PATH = '/Users/fweber/Desktop/contacts-2019-11-20.vcf'
+PEOPLE_PATH = './lesGens.txt'
+
+# Data loading
 
 
-def load_people(path='./lesGens.txt'):
+def load_people(path):
     with open(path) as f:
         people_list = f.readlines()
     # separate couples and single
     individuals = []
     couples = []
     for line in people_list:
-        if ',' not in line:
-            people_name = line.strip()
-            individuals.append(people_name)
-        else:
-            indiv_in_couple = line.split(',')
-            indiv_in_couple = [people.strip() for people in indiv_in_couple]
-            individuals += indiv_in_couple
-            couples.append(indiv_in_couple)
+        if len(line) > 1:
+            if ',' not in line:
+                people_name = line.strip()
+                individuals.append(people_name)
+            else:
+                indiv_in_couple = line.split(',')
+                indiv_in_couple = [people.strip()
+                                   for people in indiv_in_couple]
+                individuals += indiv_in_couple
+                couples.append(indiv_in_couple)
     return individuals, couples
+
+
+def load_vcards(path):
+    with open(path) as f:
+        card_lines = f.readlines()
+    vcards = []
+    for line in card_lines:
+        if line.startswith('BEGIN:VCARD'):
+            one_vcard = line
+        elif line.startswith('END:VCARD'):
+            one_vcard += line
+            vcards.append(vobject.readOne(one_vcard))
+        else:
+            one_vcard += line
+    return vcards
+
+# filtering emails
+
+
+def get_key_from_vcard(vcard):
+    name = vcard.fn.value
+    try:
+        mail = vcard.email.value
+    except:
+        mail = ''
+    return '#'.join([name, mail])
+
+
+def get_people_emails(people_list, vcard_keys):
+    people2mails = {}
+    for p in people_list:
+        potential_mails = []
+        for card_key in vcard_keys:
+            if p in card_key:
+                potential_mail = card_key.split('#')[1]
+                if '@' in potential_mail:
+                    potential_mails.append(potential_mail)
+        people2mails.update({p: potential_mails})
+    return people2mails
+
+
+def email_checker(people_and_mails):
+    people_and_mail = {}
+    for name, mails in people_and_mails.items():
+        if len(mails) == 0:
+            given_mail = input(f'No mail for {name} : provide it !\n')
+            people_and_mail.update({name: given_mail})
+        elif len(mails) > 1:
+            print(f'Ambiguous mails list for {name}. Pick one !')
+            for (i, mail) in enumerate(mails):
+                print(f'\t{i}\t{mail}')
+            idx = input('Which one ?')
+            people_and_mail.update({name: mails[int(idx)]})
+        else:
+            people_and_mail.update({name: mails[0]})
+    return people_and_mail
+
+
+def gather_emails(people_list, vcards):
+    vcard_keys = [get_key_from_vcard(vcard) for vcard in vcards]
+    people2emails = get_people_emails(people_list, vcard_keys)
+    return email_checker(people2emails)
+
+
+# prepare gifts
 
 
 def exists_gifts_among_couple(ordered_individuals, couples):
@@ -49,41 +128,88 @@ def exists_gifts_among_couple(ordered_individuals, couples):
     return False
 
 
-# Import list of people ...
-# with open('lesGens.json') as f:
-#     individuals = json.load(f)
-# n_individuals = len(individuals)
-
-# with open('lesCouples.json') as f:
-#     couples = json.load(f)
-
-individuals, couples = load_people()
-n_individuals = len(individuals)
-
-# Save a short hash that characterizes that run :
-caracteristic_to_hash = {'individuals': individuals, 'couples': couples}
-run_hash = hashlib.md5(json.dumps(caracteristic_to_hash).encode()).hexdigest()
-run_hash = run_hash[:5]
-
-# sample trials until no one in a couple has to offer a gift to his/her +1 :
-gift_among_couple = exists_gifts_among_couple(individuals, couples)
-while gift_among_couple:
-    random.shuffle(individuals)
+def pick_random_gifts(individuals, couples):
+    '''Find a permutation that avoid gifts among couples
+    '''
     gift_among_couple = exists_gifts_among_couple(individuals, couples)
+    while gift_among_couple:
+        random.shuffle(individuals)
+        gift_among_couple = exists_gifts_among_couple(individuals, couples)
+    return individuals
 
-# We've found a permutation that avoids auto-couple-gift
-# Make a sub directory
-# caracteristics of that run :
-m = hashlib.md5().hexdigest()
-SUBDIR_PATH = os.path.join(os.path.dirname(
-    __file__), 'secret_santa_{}'.format(run_hash))
+
+def craft_message_between(sender, receiver):
+    return f'''
+            {sender}, tu offres un cadeau à ... {receiver} ! <3
+
+            Le Père Noël
+            '''
+
+# emails
+
+
+def get_mail_config():
+    with open('./mail_config.json') as f:
+        return json.load(f)
+
+
+def get_connection(host, port, santas_address, santas_password):
+    server = smtplib.SMTP(host, port)
+    server.starttls()
+    server.login(santas_address, santas_password)
+    return server
+
+
+def fire_emails(server, mails_and_messages):
+    for mail, message in tqdm.tqdm(mails_and_messages.items()):
+        msg = MIMEMultipart()
+        msg['From'] = server.user
+        msg['To'] = mail
+        msg['Subject'] = "Secret Santa <3"
+        msg.attach(MIMEText(message, 'plain'))
+        server.send_message(msg)
+        time.sleep(1)
+
+
+def hash_and_get_output_dir(individuals, couples):
+    caracteristic_to_hash = {'individuals': individuals, 'couples': couples}
+    run_hash = hashlib.md5(json.dumps(
+        caracteristic_to_hash).encode()).hexdigest()
+    run_hash = run_hash[:5]
+    return os.path.join(os.path.dirname(__file__), 'secret_santa_{}'.format(run_hash))
+
+
+# load people and vcards
+individuals, couples = load_people(PEOPLE_PATH)
+vcards = load_vcards(VCARD_PATH)
+
+# get their emails
+people2email = gather_emails(individuals, vcards)
+
+# compute a hash for that run
+SUBDIR_PATH = hash_and_get_output_dir(individuals, couples)
+
+# compute a permutation
+ordered_people = pick_random_gifts(individuals, couples)
+n_people = len(ordered_people)
+
+# rearrange senders and receivers
+mails2messages = {}
+for i, name in enumerate(ordered_people):
+    sender = individuals[i]
+    receiver = individuals[(i+1) % n_people]
+    message = craft_message_between(sender, receiver)
+    senders_mail = people2email.get(sender)
+    mails2messages.update({senders_mail: message})
+
+# backup
 if not os.path.isdir(SUBDIR_PATH):
     os.mkdir(SUBDIR_PATH)
 
-# And write results file down
-for i in range(n_individuals):
-    sender = individuals[i]
-    receiver = individuals[(i+1) % n_individuals]
+with open(os.path.join(SUBDIR_PATH, 'sources.json'), 'w') as f:
+    json.dump(mails2messages, f, indent=2, ensure_ascii=False)
 
-    with open(os.path.join(SUBDIR_PATH, '{}.txt'.format(sender)), 'w') as f:
-        f.write('{}, tu offres un cadeau à {} :)'.format(sender, receiver))
+# send mails
+mail_config = get_mail_config()
+server = get_connection(**mail_config)
+fire_emails(server, mails2messages)
