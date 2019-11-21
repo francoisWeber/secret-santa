@@ -55,12 +55,19 @@ def load_vcards(path):
 
 
 def get_key_from_vcard(vcard):
-    name = vcard.fn.value
+    # name
+    name = vcard.fn.value.lower()
+    # nickname
     try:
-        mail = vcard.email.value
-    except:
+        nickname = vcard.nickname.value.lower()
+    except AttributeError:
+        nickname = ''
+    # mail
+    try:
+        mail = vcard.email.value.lower()
+    except AttributeError:
         mail = ''
-    return '#'.join([name, mail])
+    return '#'.join([name + ':' + nickname, mail])
 
 
 def get_people_emails(people_list, vcard_keys):
@@ -68,7 +75,7 @@ def get_people_emails(people_list, vcard_keys):
     for p in people_list:
         potential_mails = []
         for card_key in vcard_keys:
-            if p in card_key:
+            if p.lower() in card_key:
                 potential_mail = card_key.split('#')[1]
                 if '@' in potential_mail:
                     potential_mails.append(potential_mail)
@@ -80,16 +87,25 @@ def email_checker(people_and_mails):
     people_and_mail = {}
     for name, mails in people_and_mails.items():
         if len(mails) == 0:
-            given_mail = input(f'No mail for {name} : provide it !\n')
-            people_and_mail.update({name: given_mail})
+            user_input = input(f'No mail for {name} : provide it !\n')
+            people_and_mail.update({name: user_input})
         elif len(mails) > 1:
-            print(f'Ambiguous mails list for {name}. Pick one !')
+            print(f'Ambiguous mails list for {name}. Pick one or type one!')
             for (i, mail) in enumerate(mails):
                 print(f'\t{i}\t{mail}')
-            idx = input('Which one ?')
-            people_and_mail.update({name: mails[int(idx)]})
+            user_input = input('Which one ?')
+            try:
+                ii = int(user_input)
+                people_and_mail.update({name: mails[ii]})
+            except ValueError:
+                people_and_mail.update({name: user_input})
         else:
-            people_and_mail.update({name: mails[0]})
+            user_input = input(
+                f'Got {mails[0]} for {name} : is it OK (enter) or wrong (type correct address)?')
+            if len(user_input) == 0:
+                people_and_mail.update({name: mails[0]})
+            else:
+                people_and_mail.update({name: user_input})
     return people_and_mail
 
 
@@ -142,7 +158,7 @@ def craft_message_between(sender, receiver):
     return f'''
             {sender}, tu offres un cadeau à ... {receiver} ! <3
 
-            Le Père Noël
+            Le Père Noël 🎅🏼
             '''
 
 # emails
@@ -161,12 +177,12 @@ def get_connection(host, port, santas_address, santas_password):
 
 
 def fire_emails(server, mails_and_messages):
-    for mail, message in tqdm.tqdm(mails_and_messages.items()):
+    for mail_message in tqdm.tqdm(mails_and_messages):
         msg = MIMEMultipart()
         msg['From'] = server.user
-        msg['To'] = mail
+        msg['To'] = mail_message['mail']
         msg['Subject'] = "Secret Santa <3"
-        msg.attach(MIMEText(message, 'plain'))
+        msg.attach(MIMEText(mail_message['message'], 'plain'))
         server.send_message(msg)
         time.sleep(1)
 
@@ -194,13 +210,13 @@ ordered_people = pick_random_gifts(individuals, couples)
 n_people = len(ordered_people)
 
 # rearrange senders and receivers
-mails2messages = {}
+mails2messages = []
 for i, name in enumerate(ordered_people):
     sender = individuals[i]
     receiver = individuals[(i+1) % n_people]
     message = craft_message_between(sender, receiver)
     senders_mail = people2email.get(sender)
-    mails2messages.update({senders_mail: message})
+    mails2messages.append({'mail': senders_mail, 'message': message})
 
 # backup
 if not os.path.isdir(SUBDIR_PATH):

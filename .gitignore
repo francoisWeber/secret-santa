@@ -6,3 +6,4 @@ mail_config.json
 lesGens.txt
 *.ipynb
 *.pyc
+.DS_Store
