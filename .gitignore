@@ -1,2 +1,8 @@
 .pytest_cache
 secret_santa_*
+*-checkpoint.py
+.ipynb_checkpoints
+mail_config.json
+lesGens.txt
+*.ipynb
+*.pyc
