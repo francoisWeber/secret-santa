@@ -7,3 +7,5 @@ lesGens.txt
 *.ipynb
 *.pyc
 .DS_Store
+
+env/
