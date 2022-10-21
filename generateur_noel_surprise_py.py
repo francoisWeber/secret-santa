@@ -12,7 +12,7 @@ from email.mime.text import MIMEText
 
 # constants
 VCARD_PATH = '/Users/fweber/Desktop/contacts-2019-11-20.vcf'
-PEOPLE_PATH = './lesGens.txt'
+PEOPLE_PATH = './travail.txt'
 
 # Data loading
 
@@ -143,23 +143,33 @@ def exists_gifts_among_couple(ordered_individuals, couples):
     # if no couples or if no couple are mutually offering something : False
     return False
 
+def custom_condition_ok(individuals):
+    for i in range(len(individuals)-1):
+        sender = individuals[i]
+        receiver = individuals[(i+1) % len(individuals)]
+        if receiver == "MORIZOT Aurore" :
+            if sender not in ["JOUBERT Clara", "DOLLAR Aurélien"]:
+                return False
+    return True
 
 def pick_random_gifts(individuals, couples):
     '''Find a permutation that avoid gifts among couples
     '''
+    random.shuffle(individuals)
     gift_among_couple = exists_gifts_among_couple(individuals, couples)
     while gift_among_couple:
         random.shuffle(individuals)
         gift_among_couple = exists_gifts_among_couple(individuals, couples)
+        gift_among_couple = gift_among_couple and not custom_condition_ok(individuals)
     return individuals
 
 
 def craft_message_between(sender, receiver):
-    return f'''
-            {sender}, tu offres un cadeau à ... {receiver} ! <3
+    return f'''Cher.e {sender},
+    Vous offrez un cadeau à ... {receiver} ! <3
 
-            Le Père Noël 🎅🏼
-            '''
+    Le Père Noël 🎅🏼
+    '''
 
 # emails
 
@@ -197,10 +207,10 @@ def hash_and_get_output_dir(individuals, couples):
 
 # load people and vcards
 individuals, couples = load_people(PEOPLE_PATH)
-vcards = load_vcards(VCARD_PATH)
+# vcards = load_vcards(VCARD_PATH)
 
 # get their emails
-people2email = gather_emails(individuals, vcards)
+# people2email = gather_emails(individuals, vcards)
 
 # compute a hash for that run
 SUBDIR_PATH = hash_and_get_output_dir(individuals, couples)
@@ -215,7 +225,7 @@ for i, name in enumerate(ordered_people):
     sender = individuals[i]
     receiver = individuals[(i+1) % n_people]
     message = craft_message_between(sender, receiver)
-    senders_mail = people2email.get(sender)
+    senders_mail = sender #people2email.get(sender)
     mails2messages.append({'mail': senders_mail, 'message': message})
 
 # backup
@@ -225,7 +235,13 @@ if not os.path.isdir(SUBDIR_PATH):
 with open(os.path.join(SUBDIR_PATH, 'sources.json'), 'w') as f:
     json.dump(mails2messages, f, indent=2, ensure_ascii=False)
 
+for my_dict in mails2messages:
+    sender = my_dict.get('mail')
+    message = my_dict.get("message")
+    with open(os.path.join(SUBDIR_PATH, f"infos_pour_{sender}.txt"), "w") as f:
+        f.write(message)
+
 # send mails
-mail_config = get_mail_config()
-server = get_connection(**mail_config)
-fire_emails(server, mails2messages)
+# mail_config = get_mail_config()
+# server = get_connection(**mail_config)
+# fire_emails(server, mails2messages)
