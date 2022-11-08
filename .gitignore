@@ -9,3 +9,5 @@ lesGens.txt
 .DS_Store
 group-*
 mail_config.sh
+*.json
+*.txt
