@@ -63,6 +63,4 @@ class ChainSaver:
                     n_mail_sent += 1
                 except smtplib.SMTPRecipientsRefused:
                     break
-                wait = random.uniform(1.0, 2.0)
-                sleep(wait)
         logging.info(f"{n_mail_sent} mails sent")
