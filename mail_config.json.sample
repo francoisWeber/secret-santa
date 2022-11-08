@@ -1,6 +1,0 @@
-{
-    "santas_address" : "exemple@ex.fr",
-    "santas_password" : "toto1234",
-    "host": "mail.exemple.com",
-    "port": 587
-}
