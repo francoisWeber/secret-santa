@@ -61,6 +61,13 @@ class ChainSaver:
                 try:
                     server.send(sender_email, message)
                     n_mail_sent += 1
-                except smtplib.SMTPRecipientsRefused:
-                    break
+                except smtplib.SMTPRecipientsRefused as e:
+                    print(e)
+                    logging.error(
+                        f"Waaait ! No mail sent to {sender} and he/she must offer something to {receiver}"
+                    )
+                if i % 4 == 3:
+                    sleep(60)
+                else:
+                    sleep(random.uniform(1, 2.0))
         logging.info(f"{n_mail_sent} mails sent")

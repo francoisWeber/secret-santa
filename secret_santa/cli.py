@@ -107,7 +107,7 @@ def run(
     ):
         print("peoples_email and mail_config must both be non-None")
 
-    print("done")
+    print("Ho ho hooo !")
 
 
 if __name__ == "__main__":
