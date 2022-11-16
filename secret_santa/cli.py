@@ -3,7 +3,6 @@ import click
 from secret_santa.people import Group
 from secret_santa.chain_saver import ChainSaver
 from secret_santa.utils import check_and_extract_email_stuff
-import random
 import os
 
 logging.basicConfig(level=logging.DEBUG)
@@ -16,6 +15,13 @@ logging.basicConfig(level=logging.DEBUG)
     default="/Users/f.weber/Code/secret-santa/lesGens.txt",
     help="File to the people",
     type=click.Path(exists=True, dir_okay=False, resolve_path=True),
+)
+@click.option(
+    "--force",
+    "-f",
+    help="Force people assignation sender:receiver",
+    type=str,
+    multiple=True,
 )
 @click.option(
     "--peoples-email-config-path",
@@ -61,6 +67,7 @@ logging.basicConfig(level=logging.DEBUG)
 )
 def run(
     people_file,
+    force,
     peoples_email_config_path,
     mail_server_config_path,
     output_dir,
@@ -73,13 +80,12 @@ def run(
     # load group info
     logging.info("Getting people data")
     group = Group.load(people_file)
+    if len(force) > 0:
+        group.set_forced_gifts_from_str(force)
 
     # find a valid chain
     logging.info("Crafting a valid people chain")
-    people_chain = None
-    while not group.is_chain_valid(people_chain):
-        people_chain = group.people.copy()
-        random.shuffle(people_chain)
+    people_chain = group.sample_chain()
 
     # save chain
     if not secret:

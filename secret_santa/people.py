@@ -1,11 +1,45 @@
+import random
 from .utils import sha256
 import json
 
 
 class Group:
-    def __init__(self, people_list=None, impossible_pairs=None):
+    def __init__(self, people_list=None, impossible_pairs=None, forced_gift=None):
         self.people = [] if people_list is None else people_list
         self.impossible_pairs = {} if impossible_pairs is None else impossible_pairs
+        self.forced_gift = None
+
+    def set_forced_gifts_from_str(self, forced_gift_chains):
+        forced_gift = []
+        for sender_and_receiver in forced_gift_chains:
+            sender, receiver = sender_and_receiver.split(":")
+            if f"{sender}-{receiver}" in self.impossible_pairs:
+                raise ValueError(
+                    f"Impossible ! {sender} et {receiver} ne peuvent pas être forcés et exclus !"
+                )
+            forced_gift += [(sender, receiver)]
+        self.forced_gift = forced_gift
+
+    def sample_chain(self):
+        people_chain = None
+        if self.forced_gift:
+            meta_chain = []
+            people = self.people.copy()
+            for (sender, receiver) in self.forced_gift:
+                sender = sender.capitalize()
+                receiver = receiver.capitalize()
+                people.pop(people.index(sender))
+                people.pop(people.index(receiver))
+                meta_chain.append([sender, receiver])
+            meta_chain += [[single_guy] for single_guy in people]
+            while not self.is_chain_valid(people_chain):
+                random.shuffle(meta_chain)
+                people_chain = [people for meta_el in meta_chain for people in meta_el]
+        else:
+            while not self.is_chain_valid(people_chain):
+                people_chain = self.people.copy()
+                random.shuffle(people_chain)
+        return people_chain
 
     @classmethod
     def load(cls, path):
