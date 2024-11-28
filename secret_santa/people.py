@@ -1,22 +1,34 @@
 import random
 from .utils import sha256
 import json
+import re
 
 
 class Group:
     def __init__(self, people_list=None, impossible_pairs=None, forced_gift=None):
         self.people = [] if people_list is None else people_list
         self.impossible_pairs = {} if impossible_pairs is None else impossible_pairs
-        self.forced_gift = None
+        self.forced_gift = forced_gift
+        
+    @staticmethod
+    def sanitize_name(name: str) -> str:
+        name = name.replace("\t", " ")
+        name = name.strip()
+        name = re.sub(r'\s+', ' ', name)
+        name = " ".join([part.capitalize() for part in name.split(" ")])
+        return name
 
     def set_forced_gifts_from_str(self, forced_gift_chains):
         forced_gift = []
         for sender_and_receiver in forced_gift_chains:
             sender, receiver = sender_and_receiver.split(":")
+            sender = self.sanitize_name(sender)
+            receiver = self.sanitize_name(receiver)
             if f"{sender}-{receiver}" in self.impossible_pairs:
                 raise ValueError(
                     f"Impossible ! {sender} et {receiver} ne peuvent pas être forcés et exclus !"
                 )
+            print("Forced gift from", sender, "to", receiver)
             forced_gift += [(sender, receiver)]
         self.forced_gift = forced_gift
 
@@ -26,8 +38,6 @@ class Group:
             meta_chain = []
             people = self.people.copy()
             for (sender, receiver) in self.forced_gift:
-                sender = sender.capitalize()
-                receiver = receiver.capitalize()
                 people.pop(people.index(sender))
                 people.pop(people.index(receiver))
                 meta_chain.append([sender, receiver])
@@ -50,7 +60,7 @@ class Group:
 
         for p_or_c in people_or_groups:
             one_line_of_people = p_or_c.split(",")
-            one_line_of_people = [pp.strip().capitalize() for pp in one_line_of_people]
+            one_line_of_people = [Group.sanitize_name(pp) for pp in one_line_of_people]
             people.update(one_line_of_people)  # update the set
             if len(one_line_of_people) > 1:
                 for p1 in one_line_of_people:

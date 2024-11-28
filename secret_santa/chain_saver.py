@@ -1,5 +1,6 @@
 from os import path as osp
-from secret_santa.utils_email import ChristmasMessageTemplate, ChristmassMessage, EMail
+from secret_santa.utils_email import ChristmasMessageTemplate, EMail
+from secret_santa.notice import GiftNotice
 from time import sleep
 from tqdm import tqdm
 from time import sleep
@@ -28,10 +29,10 @@ class ChainSaver:
         logging.info(f"Saving chain as multiple one-person files: {output_dir}")
         n_people = len(people_chain)
         for i in range(n_people):
-            sender = people_chain[i]
-            receiver = people_chain[(i + 1) % n_people]
-            msg = get_notice(sender, receiver)
-            with open(osp.join(output_dir, f"{sender}.txt"), "w") as f:
+            sender_name = people_chain[i]
+            target_name = people_chain[(i + 1) % n_people]
+            msg = GiftNotice.plain_text_template().render(sender_name=sender_name, target_name=target_name)
+            with open(osp.join(output_dir, f"{sender_name}.txt"), "w") as f:
                 f.write(msg)
 
     @staticmethod
