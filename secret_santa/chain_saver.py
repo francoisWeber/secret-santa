@@ -36,8 +36,9 @@ class ChainSaver:
 
     @staticmethod
     def into_emails(
-        people_chain: list, people_emails: dict, email_config: dict, mail_template=None
+        people_chain: list, people_emails: dict, email_config: dict
     ):
+        raise NotImplementedError("WIP part")
         logging.info("Sending emails to everyone")
         n_people = len(people_chain)
         problem = 0
@@ -51,7 +52,7 @@ class ChainSaver:
         with EMail(**email_config) as server:
             logging.info("Connected !")
             logging.info("Sending mails ...")
-            template = ChristmasMessageTemplate(email_config["user"], mail_template)
+            template = ChristmasMessageTemplate(email_config["user"])
             n_mail_sent = 0
             for i in tqdm(range(n_people)):
                 sender = people_chain[i]

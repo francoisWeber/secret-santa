@@ -4,20 +4,11 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email.encoders import encode_base64
-from jinja2 import Environment, PackageLoader, select_autoescape
 
 
 class ChristmasMessageTemplate:
-    def __init__(self, santa_mail, mail_template=None) -> None:
+    def __init__(self, santa_mail) -> None:
         self.santa_mail = santa_mail
-        self.mail_template = mail_template
-        if mail_template:
-            logging.debug("Preparing mail using template")
-            with open(mail_template) as f:
-                env = Environment()
-                self.template = env.from_string(f.read())
-        else:
-            self.template = None
 
     def _craft_message_html_part(self, sender_name, target_name):
         if self.mail_template:
@@ -67,79 +58,6 @@ class ChristmasMessageTemplate:
         # Create file attachment
         attachment = MIMEBase("application", "octet-stream")
         attachment.set_payload(b"\xDE\xAD\xBE\xEF")  # Raw attachment data
-        encode_base64(attachment)
-        attachment.add_header("Content-Disposition", "attachment; filename=myfile.dat")
-
-        # Attach all the parts to the Multipart MIME email
-        # email_message.attach(text_part)
-        email_message.attach(html_part)
-        email_message.attach(attachment)
-        return email_message
-
-
-class ChristmassMessage:
-    def __init__(
-        self, sender_name, target_name, sender_mail, santa_mail, mail_template=None
-    ):
-        self.sender_name = sender_name
-        self.target_name = target_name
-        self.sender_mail = sender_mail
-        self.santa_mail = santa_mail
-        self.mail_template = mail_template
-        if mail_template:
-            logging.debug("Preparing mail using template")
-            env = Environment(
-                loader=PackageLoader("santa"), autoescape=select_autoescape()
-            )
-            self.template = env.get_template(mail_template)
-        else:
-            self.template = None
-
-    def _craft_message_html_part(self):
-        if self.mail_template:
-            return self.template.render(self.sender_name, self.target_name)
-        else:
-            return self._basic_message_html_part()
-
-    def _basic_message_html_part(self):
-        return f"""<html>
-        <head>
-            <h1>Ho ho ho!</h1>
-            <style>
-                h1 {{
-                    text-align: center;
-                }}
-            </style>
-        </head>
-        <body>
-            <div><strong>{self.sender_name}, cette année tu offres un cadeau à {self.target_name} ! \U0001F381 </strong></div>
-            <br>
-            <footer>~ Le Père Noël \U0001F385 </footer>
-
-            <style>
-                footer {{
-                    text-align: right;
-                }}
-            </style>
-        </body>
-        </html>"""
-
-    def get_email(self):
-        # Create multipart MIME email
-        email_message = MIMEMultipart()
-        email_message.add_header("To", self.sender_mail)
-        email_message.add_header("From", f"Papa Noel <{self.santa_mail}>")
-        email_message.add_header("Subject", "Une petite mission pour ce Noël ...")
-        email_message.add_header("X-Priority", "1")  # Urgent/High priority
-
-        # Create text and HTML bodies for email
-        # text_part = MIMEText('Hello world plain text!', 'plain')
-        html_part = MIMEText(self._craft_message_html_part(), "html")
-
-        # Create file attachment
-        attachment = MIMEBase("application", "octet-stream")
-        attachment.set_payload(b"\xDE\xAD\xBE\xEF")  # Raw attachment data
-        encode_base64(attachment)
         attachment.add_header("Content-Disposition", "attachment; filename=myfile.dat")
 
         # Attach all the parts to the Multipart MIME email

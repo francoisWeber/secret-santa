@@ -1,5 +1,4 @@
 import hashlib
-import vobject
 import json
 import logging
 import os
@@ -12,23 +11,9 @@ def sha256(*args):
     return sha1_creator.digest().hex()
 
 
-def load_vcards(path):
-    with open(path) as f:
-        card_lines = f.readlines()
-    vcards = []
-    for line in card_lines:
-        if line.startswith("BEGIN:VCARD"):
-            one_vcard = line
-        elif line.startswith("END:VCARD"):
-            one_vcard += line
-            vcards.append(vobject.readOne(one_vcard))
-        else:
-            one_vcard += line
-    return vcards
-
 
 def check_and_extract_email_stuff(
-    people_chain, peoples_email, mail_config, mail_template
+    people_chain, peoples_email, mail_config
 ):
     with open(peoples_email) as f:
         _peoples_email = json.load(f)

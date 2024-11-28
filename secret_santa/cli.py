@@ -47,22 +47,10 @@ logging.basicConfig(level=logging.DEBUG)
     type=click.Path(exists=False, dir_okay=True),
 )
 @click.option(
-    "--mail-template",
-    "-t",
-    default=None,
-    help="Jinja mail template",
-    type=click.Path(exists=True, dir_okay=False, file_okay=True),
-)
-@click.option(
     "--secret",
     "-s",
     default=False,
     help="If set, then no trace about the people's chain is left !",
-    is_flag=True,
-)
-@click.option(
-    "--debug",
-    default=False,
     is_flag=True,
 )
 def run(
@@ -71,12 +59,8 @@ def run(
     peoples_email_config_path,
     mail_server_config_path,
     output_dir,
-    mail_template,
     secret,
-    debug,
 ):
-    if debug:
-        logging.getLogger().setLevel(logging.DEBUG)
     # load group info
     logging.info("Getting people data")
     group = Group.load(people_file)
@@ -102,7 +86,6 @@ def run(
                 people_chain,
                 peoples_email_config_path,
                 mail_server_config_path,
-                mail_template,
             )
         )
     elif (
